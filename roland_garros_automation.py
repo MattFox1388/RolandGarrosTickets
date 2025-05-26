@@ -277,30 +277,42 @@ class RolandGarrosAutomation:
 
     async def find_available_date(self):
         """Find and click on available dates"""
-        # First, try to set language to English
+        # Check if already in English before changing language
         try:
-            print("🌐 Setting language to English...")
-            
-            # Find and click the dropdown toggle
-            dropdown_toggle = await self.page.query_selector('div.w-icon-dropdown-toggle')
-            if dropdown_toggle:
-                print("✅ Found language dropdown toggle - clicking...")
-                await dropdown_toggle.click()
-                await asyncio.sleep(random.uniform(0.5, 1))
-                
-                # Find and click English link
-                english_link = await self.page.query_selector('a:has-text("En - English")')
-                if english_link:
-                    print("✅ Found 'En - English' link - clicking...")
-                    await english_link.click()
-                    await asyncio.sleep(random.uniform(1, 2))
-                    print("✅ Language set to English")
-                else:
-                    print("⚠️ 'En - English' link not found")
-            else:
-                print("⚠️ Language dropdown toggle not found")
-        except Exception as lang_error:
-            print(f"⚠️ Error setting language (non-critical): {lang_error}")
+            # Look for the language dropdown specifically - it contains "en" or "fr" text
+            lang_dropdowns = await self.page.query_selector_all('div.nav-dropdown.w-dropdown')
+            for dropdown in lang_dropdowns:
+                # Check if this dropdown contains language text
+                dropdown_text = await dropdown.text_content()
+                if dropdown_text and ('en' in dropdown_text.lower() or 'fr' in dropdown_text.lower()):
+                    # Found the language dropdown, check if it's already set to English
+                    if 'en' in dropdown_text.lower() and 'welcome' not in dropdown_text.lower():
+                        print("✅ Already in English, skipping language change")
+                        break
+                    elif 'fr' in dropdown_text.lower() and 'welcome' not in dropdown_text.lower():
+                        print("🌐 Currently in French, switching to English...")
+                        
+                        # Find the dropdown toggle within this specific dropdown
+                        dropdown_toggle = await dropdown.query_selector('div.dropdown-toggle.w-dropdown-toggle')
+                        if dropdown_toggle:
+                            print("✅ Found language dropdown toggle - clicking...")
+                            await dropdown_toggle.click()
+                            await asyncio.sleep(random.uniform(0.5, 1))
+                            
+                            # Find and click English link within this dropdown
+                            english_link = await dropdown.query_selector('a[href="/en/ticket/calendrier"]')
+                            if english_link:
+                                print("✅ Found 'En - English' link - clicking...")
+                                await english_link.click()
+                                await asyncio.sleep(random.uniform(1, 2))
+                                print("✅ Language set to English")
+                            else:
+                                print("⚠️ 'En - English' link not found")
+                        else:
+                            print("⚠️ Language dropdown toggle not found")
+                        break
+        except Exception as e:
+            print(f"⚠️ Error checking/setting language (non-critical): {e}")
         
         target_dates = ["FRI 30 MAY", "THU 29 MAY"]
         
