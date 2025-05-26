@@ -484,33 +484,54 @@ class RolandGarrosAutomation:
                             print("✅ Checkbox checked")
                             await asyncio.sleep(random.uniform(0.3, 0.7))
                             
-                            # Look for submit button (try multiple selectors)
-                            button_selectors = [
-                                'button[type="submit"]',
-                                'input[type="submit"]',
-                                'button',
-                                '.btn',
-                                '.button'
-                            ]
+                            # Look for button with "J'AI COMPRIS" text
+                            print("🔍 Looking for 'J'AI COMPRIS' button...")
+                            # Try specific button class first
+                            jai_compris_button = await self.page.query_selector('button.m01_button_02.w-button')
+                            if not jai_compris_button:
+                                # Fallback to text-based search
+                                jai_compris_button = await self.page.query_selector('text="J\'AI COMPRIS"')
+                            if not jai_compris_button:
+                                # Try case-insensitive search
+                                jai_compris_button = await self.page.query_selector('text=/j\'ai compris/i')
                             
-                            button_found = False
-                            for selector in button_selectors:
-                                button = await self.page.query_selector(selector)
-                                if button:
-                                    # Check if button is visible and enabled
-                                    is_visible = await button.is_visible()
-                                    is_enabled = await button.is_enabled()
-                                    
-                                    if is_visible and is_enabled:
-                                        print(f"✅ Found clickable button with selector: {selector}")
-                                        await button.click()
-                                        print("✅ Button clicked")
-                                        button_found = True
-                                        await asyncio.sleep(random.uniform(1, 2))
-                                        break
-                            
-                            if not button_found:
-                                print("⚠️ No clickable button found after checking checkbox")
+                            if jai_compris_button:
+                                # Verify it contains the expected text
+                                button_text = await jai_compris_button.text_content()
+                                print(f"📝 Found button with text: '{button_text}'")
+                                
+                                # Check if button is visible and enabled
+                                is_visible = await jai_compris_button.is_visible()
+                                is_enabled = await jai_compris_button.is_enabled()
+                                
+                                if is_visible and is_enabled:
+                                    print("✅ Found 'J'AI COMPRIS' button - clicking...")
+                                    await jai_compris_button.click()
+                                    print("✅ 'J'AI COMPRIS' button clicked")
+                                    await asyncio.sleep(random.uniform(1, 2))
+                                else:
+                                    print("⚠️ 'J'AI COMPRIS' button found but not clickable (visible/enabled)")
+                                    print("🖱️ Trying hover first to activate button...")
+                                    try:
+                                        await jai_compris_button.hover()
+                                        await asyncio.sleep(random.uniform(0.5, 1))
+                                        print("✅ Hovered over button")
+                                        
+                                        # Check again if it's now clickable
+                                        is_visible_after_hover = await jai_compris_button.is_visible()
+                                        is_enabled_after_hover = await jai_compris_button.is_enabled()
+                                        
+                                        if is_visible_after_hover and is_enabled_after_hover:
+                                            print("✅ Button is now clickable after hover - clicking...")
+                                            await jai_compris_button.click()
+                                            print("✅ 'J'AI COMPRIS' button clicked after hover")
+                                            await asyncio.sleep(random.uniform(1, 2))
+                                        else:
+                                            print("❌ Button still not clickable after hover")
+                                    except Exception as hover_error:
+                                        print(f"❌ Error during hover attempt: {hover_error}")
+                            else:
+                                print("❌ 'J'AI COMPRIS' button not found")
                         else:
                             print("❌ Checkbox not found")
                             
@@ -568,14 +589,44 @@ class RolandGarrosAutomation:
                                 await asyncio.sleep(random.uniform(0.3, 0.5))
                                 print("✅ Clicked 'Full price' option")
                                 full_price_clicked = True
+
+                                # After selecting category, look for increment button and add to cart
+                                print("🔍 Looking for increment button after category selection...")
+                                increment_button = await self.page.query_selector('button.increment.less.button.w-button')
+                                if increment_button:
+                                    print("✅ Found increment button after category selection")
+                                    print("🔢 Clicking increment button first time...")
+                                    await increment_button.click()
+                                    print("✅ First increment click completed")
+                                    
+                                    print("🔢 Clicking increment button second time...")
+                                    await increment_button.click()
+                                    print("✅ Second increment click completed")
+                                    
+                                else:
+                                    print("⚠️ Increment button not found after category selection, continuing...")
                                 
-                                # Check for blocking after clicking full price
-                                print("🔍 Checking for blocking after clicking full price...")
-                                if await self.check_for_blocking():
-                                    print("❌ Blocking detected after clicking full price")
+                                # Find and click add to cart button
+                                print("🔍 Looking for add-to-cart button after category selection...")
+                                add_to_cart_button = await self.page.query_selector('button[class*="add-to-cart"]')
+                                if add_to_cart_button:
+                                    print("✅ Found add-to-cart button")
+                                    print("🛒 Clicking add-to-cart button...")
+                                    await add_to_cart_button.click()
+                                    print("✅ Add-to-cart click completed")
+                                    
+                                    print("🔍 Checking for blocking after add-to-cart...")
+                                    if await self.check_for_blocking():
+                                        print("❌ Blocking detected after add-to-cart")
+                                        return False
+                                    print("✅ No blocking after add-to-cart")
+                                        
+                                    print("🎉 Category ticket purchase completed successfully!")
+                                    return True
+                                else:
+                                    print("❌ Add-to-cart button not found after category selection")
                                     return False
-                                print("✅ No blocking after full price click")
-                                break
+                                
                             else:
                                 print("❌ Could not find parent div of 'Full price' h2")
                     
@@ -687,60 +738,39 @@ class RolandGarrosAutomation:
                                     await dropdown.click()
                                     print("✅ Category click completed")
                                     
-                                    # Check for blocking after clicking category
-                                    print("🔍 Checking for blocking after category selection...")
-                                    if await self.check_for_blocking():
-                                        print("❌ Blocking detected after category selection")
-                                        return False
-                                    print("✅ No blocking after category selection")
-                                    
-                                    # After selecting category, look for increment button and add to cart
-                                    print("🔍 Looking for increment button after category selection...")
-                                    increment_button = await self.page.query_selector('button.increment.less.button.w-button')
-                                    if increment_button:
-                                        print("✅ Found increment button after category selection")
-                                        print("🔢 Clicking increment button first time...")
-                                        await increment_button.click()
-                                        print("✅ First increment click completed")
+                                    # Look for non-disabled polygon right after category click
+                                    print("🔍 Looking for non-disabled polygons...")
+                                    try:
+                                        # Get all polygons
+                                        polygons = await self.page.query_selector_all('polygon')
+                                        print(f"📊 Found {len(polygons)} polygons")
                                         
-                                        print("🔍 Checking for blocking after first increment...")
-                                        if await self.check_for_blocking():
-                                            print("❌ Blocking detected after first increment")
-                                            return False
-                                        print("✅ No blocking after first increment")
+                                        polygon_clicked = False
+                                        for j, polygon in enumerate(polygons):
+                                            # Get class list
+                                            class_list = await polygon.get_attribute('class') or ''
+                                            print(f"📝 Polygon {j+1} classes: '{class_list}'")
                                             
-                                        print("🔢 Clicking increment button second time...")
-                                        await increment_button.click()
-                                        print("✅ Second increment click completed")
+                                            if 'disabled' not in class_list.lower():
+                                                print(f"✅ Found non-disabled polygon {j+1}")
+                                                
+                                                # Get polygon details for logging
+                                                points = await polygon.get_attribute('points')
+                                                print(f"📍 Polygon points: {points}")
+                                                
+                                                # Click the polygon
+                                                print("🖱️ Clicking non-disabled polygon...")
+                                                await polygon.click()
+                                                print("✅ Polygon clicked")
+                                                polygon_clicked = True
+                                                break
                                         
-                                        print("🔍 Checking for blocking after second increment...")
-                                        if await self.check_for_blocking():
-                                            print("❌ Blocking detected after second increment")
-                                            return False
-                                        print("✅ No blocking after second increment")
-                                    else:
-                                        print("⚠️ Increment button not found after category selection, continuing...")
-                                    
-                                    # Find and click add to cart button
-                                    print("🔍 Looking for add-to-cart button after category selection...")
-                                    add_to_cart_button = await self.page.query_selector('button[class*="add-to-cart"]')
-                                    if add_to_cart_button:
-                                        print("✅ Found add-to-cart button")
-                                        print("🛒 Clicking add-to-cart button...")
-                                        await add_to_cart_button.click()
-                                        print("✅ Add-to-cart click completed")
-                                        
-                                        print("🔍 Checking for blocking after add-to-cart...")
-                                        if await self.check_for_blocking():
-                                            print("❌ Blocking detected after add-to-cart")
-                                            return False
-                                        print("✅ No blocking after add-to-cart")
+                                        if not polygon_clicked:
+                                            print("⚠️ No non-disabled polygons found")
                                             
-                                        print("🎉 Category ticket purchase completed successfully!")
-                                        return True
-                                    else:
-                                        print("❌ Add-to-cart button not found after category selection")
-                                        return False
+                                    except Exception as polygon_error:
+                                        print(f"❌ Error handling polygon selection: {polygon_error}")
+                                    
                                 else:
                                     print(f"⚠️ Category {i+1} is disabled, skipping...")
                                     
