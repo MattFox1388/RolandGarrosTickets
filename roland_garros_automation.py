@@ -12,7 +12,7 @@ import json
 import os
 
 class RolandGarrosAutomation:
-    def __init__(self, date_switch_delay=0.7):
+    def __init__(self, date_switch_delay=0.7, found_ticket_delay=2.0):
         self.playwright = None
         self.browser = None
         self.context = None
@@ -20,7 +20,8 @@ class RolandGarrosAutomation:
         self.selected_dates = set()
         self.retry_count = 0
         self.max_retries = 3
-        self.date_switch_delay = date_switch_delay
+        self.date_switch_delay = date_switch_delay  # Delay when no tickets found
+        self.found_ticket_delay = found_ticket_delay  # Longer delay when tickets found
         
         # Login credentials - change these as needed
         self.credentials = {
@@ -266,6 +267,7 @@ class RolandGarrosAutomation:
     async def find_available_date(self):
         """Find and click on available dates"""
         target_dates = ["FRI 30 MAY", "THU 29 MAY"]
+        tickets_found = False
         
         for date_text in target_dates:
             if date_text in self.selected_dates:
@@ -289,21 +291,38 @@ class RolandGarrosAutomation:
                         
                         if await self.check_collection_list():
                             self.selected_dates.add(date_text)
+                            tickets_found = True
+                            print(f"🎫 Found tickets! Sleeping for {self.found_ticket_delay}s...")
+                            await asyncio.sleep(self.found_ticket_delay)
                             return True
                         
+                        print(f"⏰ No tickets found, sleeping for {self.date_switch_delay}s...")
                         await asyncio.sleep(self.date_switch_delay)
-                        
+
             except Exception as e:
                 print(f"Error finding date {date_text}: {e}")
                 if "Page.wait_for_selector: Timeout" in str(e):
-                    print("⚠️ Date selection timed out, trying to go back...")
+                    print("⚠️ Date selection timed out, checking for login form...")
                     try:
-                        back_button = await self.page.wait_for_selector('button.bt-back.small.w-inline-block', timeout=2000)
-                        if back_button:
-                            await back_button.click()
+                        # Check for login form
+                        username_input = await self.page.wait_for_selector('input[name="username"]', timeout=2000)
+                        if username_input:
+                            print("✅ Found login form, attempting login...")
+                            await self.handle_login()
                             await asyncio.sleep(0.5)
-                    except Exception as back_error:
-                        print(f"❌ Error clicking back button: {back_error}")
+                            return False
+                    except Exception as login_error:
+                        if "Timeout" in str(login_error):
+                            print("⚠️ Both date and login timeouts occurred, trying back button...")
+                            try:
+                                back_button = await self.page.wait_for_selector('button.bt-back.small.w-inline-block', timeout=2000)
+                                if back_button:
+                                    await back_button.click()
+                                    await asyncio.sleep(0.5)
+                            except Exception as back_error:
+                                print(f"❌ Error clicking back button: {back_error}")
+                        else:
+                            print(f"❌ Error handling login: {login_error}")
                 continue
         
         self.selected_dates.clear()
@@ -769,13 +788,14 @@ async def main():
     """Main async function"""
     print("🎾 Roland Garros Ticket Automation Starting...")
     
-    # Get delay from command line argument or use default
+    # Get delays from command line arguments or use defaults
     import sys
     date_switch_delay = float(sys.argv[1]) if len(sys.argv) > 1 else 0.7
-    print(f"Using date switch delay: {date_switch_delay} seconds")
+    found_ticket_delay = float(sys.argv[2]) if len(sys.argv) > 2 else 2.0
+    print(f"Using delays - No tickets: {date_switch_delay}s, Found tickets: {found_ticket_delay}s")
     
     roland_garros_url = "https://tickets.rolandgarros.com/"
-    automation = RolandGarrosAutomation(date_switch_delay=date_switch_delay)
+    automation = RolandGarrosAutomation(date_switch_delay=date_switch_delay, found_ticket_delay=found_ticket_delay)
     await automation.run_automation(roland_garros_url)
 
 if __name__ == "__main__":
