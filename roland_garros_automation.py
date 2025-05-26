@@ -585,8 +585,6 @@ class RolandGarrosAutomation:
                 if has_single_ticket and has_outside_courts:
                     print(f"🎉 AVAILABLE SINGLE TICKET + OUTSIDE COURTS FOUND! 🎉")
                     print(f"Collection item classes: {class_list}")
-                    print(f"🎫 Found tickets! Sleeping for {self.found_ticket_delay}s...")
-                    await asyncio.sleep(self.found_ticket_delay)
                     
                     # Find the first <a> link within this collection item (recursively)
                     try:
@@ -614,6 +612,9 @@ class RolandGarrosAutomation:
                             link_text = await link.evaluate('el => el.textContent.trim()')
                             print(f"Found link: '{link_text}' -> {link_href}")
                             
+                            print(f"🎫 Found tickets! Sleeping for {self.found_ticket_delay}s...")
+                            await asyncio.sleep(self.found_ticket_delay)
+                            
                             # If link text is "Unavailable", reload page and continue
                             if "unavailable" in link_text.lower():
                                 print("⚠️ Found unavailable link, reloading page...")
@@ -621,21 +622,12 @@ class RolandGarrosAutomation:
                                 await asyncio.sleep(0.5)
                                 return False
                             
-                            # Click the link
-                            await link.click()
-                            print("✅ Successfully clicked on the ticket link!")
-                            await asyncio.sleep(random.uniform(0, 1))
-                            
-                            # Wait for page to load and handle ticket purchase
-                            # Wait for either ticket quantity selector or blocking text to appear
-                            try:
-                                await self.page.wait_for_selector('button.increment.less.button.w-button, div.blocking-text', timeout=5000)
-                            except:
-                                print("⚠️ Timeout waiting for ticket page elements")
-                            if await self.handle_ticket_purchase():
-                                print("🎉 Successfully handled ticket purchase!")
-                            
-                            return True
+                            # If we find a price, it's a valid ticket - don't switch dates
+                            if "€" in link_text:
+                                print("💰 Found valid ticket with price!")
+                                # Click the link
+                                await link.click()
+                                return True  # Return True to prevent date switching
                         else:
                             print("❌ No <a> link found within the collection item")
                             # Fallback: try clicking the div itself
