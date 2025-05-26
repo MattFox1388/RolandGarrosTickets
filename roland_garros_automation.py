@@ -277,6 +277,31 @@ class RolandGarrosAutomation:
 
     async def find_available_date(self):
         """Find and click on available dates"""
+        # First, try to set language to English
+        try:
+            print("🌐 Setting language to English...")
+            
+            # Find and click the dropdown toggle
+            dropdown_toggle = await self.page.query_selector('div.w-icon-dropdown-toggle')
+            if dropdown_toggle:
+                print("✅ Found language dropdown toggle - clicking...")
+                await dropdown_toggle.click()
+                await asyncio.sleep(random.uniform(0.5, 1))
+                
+                # Find and click English link
+                english_link = await self.page.query_selector('a:has-text("En - English")')
+                if english_link:
+                    print("✅ Found 'En - English' link - clicking...")
+                    await english_link.click()
+                    await asyncio.sleep(random.uniform(1, 2))
+                    print("✅ Language set to English")
+                else:
+                    print("⚠️ 'En - English' link not found")
+            else:
+                print("⚠️ Language dropdown toggle not found")
+        except Exception as lang_error:
+            print(f"⚠️ Error setting language (non-critical): {lang_error}")
+        
         target_dates = ["FRI 30 MAY", "THU 29 MAY"]
         
         for date_text in target_dates:
@@ -652,7 +677,11 @@ class RolandGarrosAutomation:
                             await asyncio.sleep(random.uniform(0, 1))
                             
                             # Wait for page to load and handle ticket purchase
-                            await asyncio.sleep(random.uniform(2, 4))
+                            # Wait for either ticket quantity selector or blocking text to appear
+                            try:
+                                await self.page.wait_for_selector('button.increment.less.button.w-button, div.blocking-text', timeout=5000)
+                            except:
+                                print("⚠️ Timeout waiting for ticket page elements")
                             if await self.handle_ticket_purchase():
                                 print("🎉 Successfully handled ticket purchase!")
                             
@@ -666,7 +695,11 @@ class RolandGarrosAutomation:
                             await asyncio.sleep(random.uniform(0, 1))
                             
                             # Wait for page to load and handle ticket purchase
-                            await asyncio.sleep(random.uniform(2, 4))
+                            try:
+                                await self.page.wait_for_selector('button.increment.less.button.w-button, div.blocking-text', timeout=5000)
+                            except:
+                                print("⚠️ Timeout waiting for ticket page elements")
+                           
                             if await self.handle_ticket_purchase():
                                 print("🎉 Successfully handled ticket purchase!")
                             
@@ -681,7 +714,11 @@ class RolandGarrosAutomation:
                             await asyncio.sleep(random.uniform(0, 0.3))
                             
                             # Wait for page to load and handle ticket purchase
-                            await asyncio.sleep(random.uniform(2, 4))
+                            try:
+                                await self.page.wait_for_selector('button.increment.less.button.w-button, div.blocking-text', timeout=5000)
+                            except:
+                                print("⚠️ Timeout waiting for ticket page elements")
+                            
                             if await self.handle_ticket_purchase():
                                 print("🎉 Successfully handled ticket purchase!")
                             
