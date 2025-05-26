@@ -12,7 +12,7 @@ import json
 import os
 
 class RolandGarrosAutomation:
-    def __init__(self):
+    def __init__(self, date_switch_delay=0.7):
         self.playwright = None
         self.browser = None
         self.context = None
@@ -20,6 +20,7 @@ class RolandGarrosAutomation:
         self.selected_dates = set()
         self.retry_count = 0
         self.max_retries = 3
+        self.date_switch_delay = date_switch_delay
         
         # Login credentials - change these as needed
         self.credentials = {
@@ -290,10 +291,19 @@ class RolandGarrosAutomation:
                             self.selected_dates.add(date_text)
                             return True
                         
-                        await asyncio.sleep(0.5)  # Added delay between date switches
+                        await asyncio.sleep(self.date_switch_delay)
                         
             except Exception as e:
                 print(f"Error finding date {date_text}: {e}")
+                if "Page.wait_for_selector: Timeout" in str(e):
+                    print("⚠️ Date selection timed out, trying to go back...")
+                    try:
+                        back_button = await self.page.wait_for_selector('button.bt-back.small.w-inline-block', timeout=2000)
+                        if back_button:
+                            await back_button.click()
+                            await asyncio.sleep(0.5)
+                    except Exception as back_error:
+                        print(f"❌ Error clicking back button: {back_error}")
                 continue
         
         self.selected_dates.clear()
@@ -306,150 +316,14 @@ class RolandGarrosAutomation:
             page_content = await self.page.content()
             if "vous avez été bloqué(e)" in page_content.lower():
                 print("💀 GAME OVER - Vous avez été bloqué(e)! 💀")
-                
-                # Play Pac-Man style game over sound (descending tones)
-                import subprocess
-                import sys
-                try:
-                    if sys.platform == "win32":
-                        import winsound
-                        # Pac-Man style descending tones
-                        winsound.Beep(659, 300)  # E
-                        winsound.Beep(622, 300)  # D#
-                        winsound.Beep(587, 300)  # D
-                        winsound.Beep(554, 300)  # C#
-                        winsound.Beep(523, 600)  # C (longer)
-                    elif sys.platform == "darwin":  # macOS
-                        # Generate Pac-Man style descending tones using osascript
-                        tones = [659, 622, 587, 554, 523]  # E, D#, D, C#, C
-                        durations = [0.3, 0.3, 0.3, 0.3, 0.6]  # Last note longer
-                        
-                        for tone, duration in zip(tones, durations):
-                            subprocess.run([
-                                "osascript", "-e", 
-                                f'do shell script "python3 -c \\"import math, wave, struct; '
-                                f'sample_rate=22050; duration={duration}; frequency={tone}; '
-                                f'frames=int(duration*sample_rate); '
-                                f'sound=[int(32767*math.sin(2*math.pi*frequency*i/sample_rate)) for i in range(frames)]; '
-                                f'data=struct.pack(\\\"<\\\" + \\\"h\\\"*len(sound), *sound); '
-                                f'w=wave.open(\\\"/tmp/beep.wav\\\", \\\"wb\\\"); '
-                                f'w.setnchannels(1); w.setsampwidth(2); w.setframerate(sample_rate); '
-                                f'w.writeframes(data); w.close()\\" && afplay /tmp/beep.wav"'
-                            ], check=False, capture_output=True)
-                    elif sys.platform == "linux":
-                        # Try to generate tones on Linux
-                        try:
-                            import math
-                            import os
-                            tones = [659, 622, 587, 554, 523]
-                            for tone in tones:
-                                duration = 0.3 if tone != 523 else 0.6
-                                os.system(f"speaker-test -t sine -f {tone} -l 1 -s 1 >/dev/null 2>&1 & sleep {duration}; kill $!")
-                        except:
-                            subprocess.run(["paplay", "/usr/share/sounds/alsa/Front_Right.wav"], check=False)
-                    else:
-                        # For other platforms, use system sound as fallback
-                        if sys.platform == "darwin":
-                            subprocess.run(["afplay", "/System/Library/Sounds/Sosumi.aiff"], check=False)
-                        elif sys.platform == "linux":
-                            subprocess.run(["paplay", "/usr/share/sounds/alsa/Front_Right.wav"], check=False)
-                except Exception as beep_error:
-                    print(f"Could not play game over sound: {beep_error}")
-                    # Fallback: multiple bell characters
-                    print("\a" * 10)  # ASCII bell character
-                
                 return True
-            else:
-                print("✅ No blocking text detected")
-                
-                # Check for French login text after confirming no blocking
-                login_indicators = [
-                    "se connecter",
-                    "connectez-vous en utilisant le même identifiant",
-                    "mot de passe que sur l'ensemble de nos sites"
-                ]
-                
-                if any(indicator in page_content.lower() for indicator in login_indicators):
-                    print("🔐 French login page detected - attempting to handle login...")
-                    try:
-                        login_success = await self.handle_login()
-                        if login_success:
-                            print("✅ Login handled successfully")
-                        else:
-                            print("⚠️ Login attempt completed but success uncertain")
-                    except Exception as login_error:
-                        print(f"❌ Error during login attempt: {login_error}")
-                
-                # Check for French checkbox agreement text
-                checkbox_text = "en cochant cette case, je reconnais avoir pris connaissance de la politique de récupération des billets"
-                if checkbox_text in page_content.lower():
-                    print("☑️ French checkbox agreement text detected - handling checkbox and button...")
-                    try:
-                        # Look for checkbox input
-                        checkbox = await self.page.query_selector('input[type="checkbox"]')
-                        if checkbox:
-                            print("✅ Found checkbox - checking it...")
-                            await checkbox.check()
-                            print("✅ Checkbox checked")
-                            await asyncio.sleep(random.uniform(0.3, 0.7))
-                            
-                            # Look for button with "J'AI COMPRIS" text
-                            print("🔍 Looking for 'J'AI COMPRIS' button...")
-                            # Try specific button class first
-                            jai_compris_button = await self.page.query_selector('button.m01_button_02.w-button')
-                            if not jai_compris_button:
-                                # Fallback to text-based search
-                                jai_compris_button = await self.page.query_selector('text="J\'AI COMPRIS"')
-                            if not jai_compris_button:
-                                # Try case-insensitive search
-                                jai_compris_button = await self.page.query_selector('text=/j\'ai compris/i')
-                            
-                            if jai_compris_button:
-                                # Verify it contains the expected text
-                                button_text = await jai_compris_button.text_content()
-                                print(f"📝 Found button with text: '{button_text}'")
-                                
-                                # Check if button is visible and enabled
-                                is_visible = await jai_compris_button.is_visible()
-                                is_enabled = await jai_compris_button.is_enabled()
-                                
-                                if is_visible and is_enabled:
-                                    print("✅ Found 'J'AI COMPRIS' button - clicking...")
-                                    await jai_compris_button.click()
-                                    print("✅ 'J'AI COMPRIS' button clicked")
-                                    await asyncio.sleep(random.uniform(1, 2))
-                                else:
-                                    print("⚠️ 'J'AI COMPRIS' button found but not clickable (visible/enabled)")
-                                    print("🖱️ Trying hover first to activate button...")
-                                    try:
-                                        await jai_compris_button.hover()
-                                        await asyncio.sleep(random.uniform(0.5, 1))
-                                        print("✅ Hovered over button")
-                                        
-                                        # Check again if it's now clickable
-                                        is_visible_after_hover = await jai_compris_button.is_visible()
-                                        is_enabled_after_hover = await jai_compris_button.is_enabled()
-                                        
-                                        if is_visible_after_hover and is_enabled_after_hover:
-                                            print("✅ Button is now clickable after hover - clicking...")
-                                            await jai_compris_button.click()
-                                            print("✅ 'J'AI COMPRIS' button clicked after hover")
-                                            await asyncio.sleep(random.uniform(1, 2))
-                                        else:
-                                            print("❌ Button still not clickable after hover")
-                                    except Exception as hover_error:
-                                        print(f"❌ Error during hover attempt: {hover_error}")
-                            else:
-                                print("❌ 'J'AI COMPRIS' button not found")
-                        else:
-                            print("❌ Checkbox not found")
-                            
-                    except Exception as checkbox_error:
-                        print(f"❌ Error handling checkbox agreement: {checkbox_error}")
-                
             return False
         except Exception as e:
             print(f"Error checking for blocking: {e}")
+            if "Target page, context or browser has been closed" in str(e):
+                print("🔄 Browser closed unexpectedly - restarting script...")
+                import sys, os
+                os.execv(sys.executable, ['python'] + sys.argv)
             return False
 
     async def handle_ticket_purchase(self):
@@ -895,29 +769,13 @@ async def main():
     """Main async function"""
     print("🎾 Roland Garros Ticket Automation Starting...")
     
-    # Test the alert sound so user knows what to expect
-    print("Testing alert sound...")
-    import subprocess
+    # Get delay from command line argument or use default
     import sys
-    try:
-        if sys.platform == "darwin":  # macOS
-            subprocess.run(["afplay", "/System/Library/Sounds/Glass.aiff"], check=False)
-        elif sys.platform == "linux":
-            subprocess.run(["paplay", "/usr/share/sounds/alsa/Front_Left.wav"], check=False)
-        elif sys.platform == "win32":
-            import winsound
-            winsound.Beep(1000, 1000)  # 1000Hz for 1 second
-    except Exception as beep_error:
-        print(f"Could not play test sound: {beep_error}")
-        # Fallback: print bell character
-        print("\a" * 3)  # ASCII bell character
-    
-    print("That's the sound you'll hear when an available ticket is found! 🔊")
-    await asyncio.sleep(2)
+    date_switch_delay = float(sys.argv[1]) if len(sys.argv) > 1 else 0.7
+    print(f"Using date switch delay: {date_switch_delay} seconds")
     
     roland_garros_url = "https://tickets.rolandgarros.com/"
-    
-    automation = RolandGarrosAutomation()
+    automation = RolandGarrosAutomation(date_switch_delay=date_switch_delay)
     await automation.run_automation(roland_garros_url)
 
 if __name__ == "__main__":
