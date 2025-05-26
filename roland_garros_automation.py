@@ -21,6 +21,12 @@ class RolandGarrosAutomation:
         self.retry_count = 0
         self.max_retries = 3
         
+        # Login credentials - change these as needed
+        self.credentials = {
+            "username": "mzorro102@gmail.com",
+            "password": "g!antMint26"
+        }
+        
     async def download_privacy_badger(self):
         """Download Privacy Badger extension"""
         extension_url = "https://addons.mozilla.org/firefox/downloads/latest/privacy-badger17/addon-506646-latest.xpi"
@@ -446,6 +452,71 @@ class RolandGarrosAutomation:
                 return True
             else:
                 print("✅ No blocking text detected")
+                
+                # Check for French login text after confirming no blocking
+                login_indicators = [
+                    "se connecter",
+                    "connectez-vous en utilisant le même identifiant",
+                    "mot de passe que sur l'ensemble de nos sites"
+                ]
+                
+                if any(indicator in page_content.lower() for indicator in login_indicators):
+                    print("🔐 French login page detected - attempting to handle login...")
+                    try:
+                        login_success = await self.handle_login()
+                        if login_success:
+                            print("✅ Login handled successfully")
+                        else:
+                            print("⚠️ Login attempt completed but success uncertain")
+                    except Exception as login_error:
+                        print(f"❌ Error during login attempt: {login_error}")
+                
+                # Check for French checkbox agreement text
+                checkbox_text = "en cochant cette case, je reconnais avoir pris connaissance de la politique de récupération des billets"
+                if checkbox_text in page_content.lower():
+                    print("☑️ French checkbox agreement text detected - handling checkbox and button...")
+                    try:
+                        # Look for checkbox input
+                        checkbox = await self.page.query_selector('input[type="checkbox"]')
+                        if checkbox:
+                            print("✅ Found checkbox - checking it...")
+                            await checkbox.check()
+                            print("✅ Checkbox checked")
+                            await asyncio.sleep(random.uniform(0.3, 0.7))
+                            
+                            # Look for submit button (try multiple selectors)
+                            button_selectors = [
+                                'button[type="submit"]',
+                                'input[type="submit"]',
+                                'button',
+                                '.btn',
+                                '.button'
+                            ]
+                            
+                            button_found = False
+                            for selector in button_selectors:
+                                button = await self.page.query_selector(selector)
+                                if button:
+                                    # Check if button is visible and enabled
+                                    is_visible = await button.is_visible()
+                                    is_enabled = await button.is_enabled()
+                                    
+                                    if is_visible and is_enabled:
+                                        print(f"✅ Found clickable button with selector: {selector}")
+                                        await button.click()
+                                        print("✅ Button clicked")
+                                        button_found = True
+                                        await asyncio.sleep(random.uniform(1, 2))
+                                        break
+                            
+                            if not button_found:
+                                print("⚠️ No clickable button found after checking checkbox")
+                        else:
+                            print("❌ Checkbox not found")
+                            
+                    except Exception as checkbox_error:
+                        print(f"❌ Error handling checkbox agreement: {checkbox_error}")
+                
             return False
         except Exception as e:
             print(f"Error checking for blocking: {e}")
@@ -734,8 +805,8 @@ class RolandGarrosAutomation:
                     print(f"✅ Found 'unlimited access to the outside courts' text in div")
                     
                     # Check if div contains excluded text
-                    if "court philippe-chatrier" in div_text.lower() or "court simonne-mathieu" in div_text.lower():
-                        excluded_court = "Court Philippe-Chatrier" if "court philippe-chatrier" in div_text.lower() else "Court Simonne-Mathieu"
+                    if "court simonne-mathieu" in div_text.lower():
+                        excluded_court = "Court Simonne-Mathieu"
                         print(f"❌ Skipping - div contains '{excluded_court}'")
                         has_outside_courts = False
                     else:
@@ -872,12 +943,12 @@ class RolandGarrosAutomation:
                 print("🔐 Login form detected - filling credentials...")
                 
                 # Fill username
-                await username_input.fill("mzorro102@gmail.com")
+                await username_input.fill(self.credentials["username"])
                 print("✅ Username filled")
                 await asyncio.sleep(random.uniform(0.5, 1))
                 
                 # Fill password
-                await password_input.fill("g!antMint26")
+                await password_input.fill(self.credentials["password"])
                 print("✅ Password filled")
                 await asyncio.sleep(random.uniform(0.5, 1))
                 
