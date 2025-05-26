@@ -397,13 +397,9 @@ class RolandGarrosAutomation:
                                 increment_button = await self.page.query_selector('button.increment.less.button.w-button')
                                 if increment_button:
                                     print("✅ Found increment button after category selection")
-                                    print("🔢 Clicking increment button first time...")
+                                    print("🔢 Clicking increment button...")
                                     await increment_button.click()
-                                    print("✅ First increment click completed")
-                                    
-                                    print("🔢 Clicking increment button second time...")
-                                    await increment_button.click()
-                                    print("✅ Second increment click completed")
+                                    print("✅ Increment click completed")
                                     
                                 else:
                                     print("⚠️ Increment button not found after category selection, continuing...")
@@ -440,29 +436,17 @@ class RolandGarrosAutomation:
                     increment_button = await self.page.query_selector('button.increment.less.button.w-button')
                     if increment_button:
                         print("✅ Found increment button")
-                        print("🔢 Clicking increment button first time...")
+                        print("🔢 Clicking increment button...")
                         await increment_button.click()
                         await asyncio.sleep(random.uniform(0.5, 1))
-                        print("✅ First increment click completed")
+                        print("✅ Increment click completed")
                         
-                        # Check for blocking after first click
-                        print("🔍 Checking for blocking after first increment...")
+                        # Check for blocking after click
+                        print("🔍 Checking for blocking after increment...")
                         if await self.check_for_blocking():
-                            print("❌ Blocking detected after first increment")
+                            print("❌ Blocking detected after increment")
                             return False
-                        print("✅ No blocking after first increment")
-                            
-                        print("🔢 Clicking increment button second time...")
-                        await increment_button.click()
-                        await asyncio.sleep(random.uniform(0.5, 1))
-                        print("✅ Second increment click completed")
-                        
-                        # Check for blocking after second click
-                        print("🔍 Checking for blocking after second increment...")
-                        if await self.check_for_blocking():
-                            print("❌ Blocking detected after second increment")
-                            return False
-                        print("✅ No blocking after second increment")
+                        print("✅ No blocking after increment")
                     else:
                         print("❌ Increment button not found")
                         return False
@@ -601,22 +585,8 @@ class RolandGarrosAutomation:
                 if has_single_ticket and has_outside_courts:
                     print(f"🎉 AVAILABLE SINGLE TICKET + OUTSIDE COURTS FOUND! 🎉")
                     print(f"Collection item classes: {class_list}")
-                    
-                    # Make audible beep sound
-                    import subprocess
-                    import sys
-                    try:
-                        if sys.platform == "darwin":  # macOS
-                            subprocess.run(["afplay", "/System/Library/Sounds/Glass.aiff"], check=False)
-                        elif sys.platform == "linux":
-                            subprocess.run(["paplay", "/usr/share/sounds/alsa/Front_Left.wav"], check=False)
-                        elif sys.platform == "win32":
-                            import winsound
-                            winsound.Beep(1000, 1000)  # 1000Hz for 1 second
-                    except Exception as beep_error:
-                        print(f"Could not play beep sound: {beep_error}")
-                        # Fallback: print bell character
-                        print("\a" * 5)  # ASCII bell character
+                    print(f"🎫 Found tickets! Sleeping for {self.found_ticket_delay}s...")
+                    await asyncio.sleep(self.found_ticket_delay)
                     
                     # Find the first <a> link within this collection item (recursively)
                     try:
@@ -679,7 +649,7 @@ class RolandGarrosAutomation:
                                 await self.page.wait_for_selector('button.increment.less.button.w-button, div.blocking-text', timeout=5000)
                             except:
                                 print("⚠️ Timeout waiting for ticket page elements")
-                           
+                            
                             if await self.handle_ticket_purchase():
                                 print("🎉 Successfully handled ticket purchase!")
                             
