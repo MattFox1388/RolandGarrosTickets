@@ -240,43 +240,24 @@ class RolandGarrosAutomation:
     async def simulate_human_behavior(self):
         """Simulate realistic human behavior"""
         try:
-            # Much longer initial delay
-            await asyncio.sleep(random.uniform(1, 3))
+            # Minimal initial delay
+            await asyncio.sleep(0.2)
             
-            # Simulate reading behavior - slow scrolling
-            for _ in range(random.randint(3, 6)):
-                scroll_y = random.randint(50, 150)
-                await self.page.evaluate(f"""
-                    window.scrollBy({{
-                        top: {scroll_y},
-                        left: 0,
-                        behavior: 'smooth'
-                    }});
-                """)
-                # Much longer pauses between scrolls
-                await asyncio.sleep(random.uniform(1, 2))
+            # Single quick scroll
+            scroll_y = random.randint(50, 150)
+            await self.page.evaluate(f"""
+                window.scrollBy({{
+                    top: {scroll_y},
+                    left: 0,
+                    behavior: 'smooth'
+                }});
+            """)
+            await asyncio.sleep(0.1)
             
-            # Simulate mouse movements - very slow and natural
-            for _ in range(random.randint(2, 4)):
-                x = random.randint(100, 800)
-                y = random.randint(100, 600)
-                
-                # Move mouse very slowly with many steps
-                await self.page.mouse.move(x, y, steps=random.randint(20, 40))
-                await asyncio.sleep(random.uniform(1, 3))
-                
-                # Sometimes hover over elements
-                if random.random() < 0.3:
-                    await asyncio.sleep(random.uniform(0.5, 1.5))
-            
-            # Simulate typing behavior occasionally
-            if random.random() < 0.2:
-                await self.page.keyboard.press('Tab')
-                await asyncio.sleep(random.uniform(0.5, 1))
-            
-            # Random longer pause to simulate thinking
-            if random.random() < 0.4:
-                await asyncio.sleep(random.uniform(1, 2))
+            # Single quick mouse movement
+            x = random.randint(100, 800)
+            y = random.randint(100, 600)
+            await self.page.mouse.move(x, y, steps=5)
             
         except Exception as e:
             print(f"Human behavior simulation error (non-critical): {e}")
@@ -289,104 +270,32 @@ class RolandGarrosAutomation:
             if date_text in self.selected_dates:
                 continue
                 
-            print(f"Looking for date: {date_text}")
-            
-            # Check for blocking when looking for dates
-            if await self.check_for_blocking():
-                print("💀 Detected blocking while looking for dates - stopping")
-                return False
-            
             try:
-                # Find date element
                 date_element = await self.page.wait_for_selector(
                     f"text={date_text}",
-                    timeout=5000
+                    timeout=2000
                 )
                 
                 if date_element:
-                    # Hover first
                     await date_element.hover()
-                    await asyncio.sleep(random.uniform(0.3, 0.7))
+                    await asyncio.sleep(0.1)
                     
-                    # Click with random offset
                     box = await date_element.bounding_box()
                     if box:
                         x = box['x'] + random.randint(5, max(6, int(box['width'] - 5)))
                         y = box['y'] + random.randint(5, max(6, int(box['height'] - 5)))
                         await self.page.mouse.click(x, y)
                         
-                        print(f"Clicked on date: {date_text}")
-                        await asyncio.sleep(random.uniform(0, 1))
-                        
-                        # Check for tickets after clicking
                         if await self.check_collection_list():
                             self.selected_dates.add(date_text)
                             return True
-                        else:
-                            print(f"No available tickets found for {date_text}, continuing...")
+                        
+                        await asyncio.sleep(0.5)  # Added delay between date switches
                         
             except Exception as e:
                 print(f"Error finding date {date_text}: {e}")
-                
-                # Check if it's a timeout error and play game over sound
-                if "timeout" in str(e).lower() or "30000ms exceeded" in str(e).lower():
-                    print("💀 TIMEOUT DETECTED - Playing game over sound! 💀")
-                    
-                    # Play Pac-Man style game over sound (descending tones)
-                    import subprocess
-                    import sys
-                    try:
-                        if sys.platform == "win32":
-                            import winsound
-                            # Pac-Man style descending tones
-                            winsound.Beep(659, 300)  # E
-                            winsound.Beep(622, 300)  # D#
-                            winsound.Beep(587, 300)  # D
-                            winsound.Beep(554, 300)  # C#
-                            winsound.Beep(523, 600)  # C (longer)
-                        elif sys.platform == "darwin":  # macOS
-                            # Generate Pac-Man style descending tones using osascript
-                            tones = [659, 622, 587, 554, 523]  # E, D#, D, C#, C
-                            durations = [0.3, 0.3, 0.3, 0.3, 0.6]  # Last note longer
-                            
-                            for tone, duration in zip(tones, durations):
-                                subprocess.run([
-                                    "osascript", "-e", 
-                                    f'do shell script "python3 -c \\"import math, wave, struct; '
-                                    f'sample_rate=22050; duration={duration}; frequency={tone}; '
-                                    f'frames=int(duration*sample_rate); '
-                                    f'sound=[int(32767*math.sin(2*math.pi*frequency*i/sample_rate)) for i in range(frames)]; '
-                                    f'data=struct.pack(\\\"<\\\" + \\\"h\\\"*len(sound), *sound); '
-                                    f'w=wave.open(\\\"/tmp/beep.wav\\\", \\\"wb\\\"); '
-                                    f'w.setnchannels(1); w.setsampwidth(2); w.setframerate(sample_rate); '
-                                    f'w.writeframes(data); w.close()\\" && afplay /tmp/beep.wav"'
-                                ], check=False, capture_output=True)
-                        elif sys.platform == "linux":
-                            # Try to generate tones on Linux
-                            try:
-                                import math
-                                import os
-                                tones = [659, 622, 587, 554, 523]
-                                for tone in tones:
-                                    duration = 0.3 if tone != 523 else 0.6
-                                    os.system(f"speaker-test -t sine -f {tone} -l 1 -s 1 >/dev/null 2>&1 & sleep {duration}; kill $!")
-                            except:
-                                subprocess.run(["paplay", "/usr/share/sounds/alsa/Front_Right.wav"], check=False)
-                        else:
-                            # For other platforms, use system sound as fallback
-                            if sys.platform == "darwin":
-                                subprocess.run(["afplay", "/System/Library/Sounds/Sosumi.aiff"], check=False)
-                            elif sys.platform == "linux":
-                                subprocess.run(["paplay", "/usr/share/sounds/alsa/Front_Right.wav"], check=False)
-                    except Exception as beep_error:
-                        print(f"Could not play game over sound: {beep_error}")
-                        # Fallback: multiple bell characters
-                        print("\a" * 10)  # ASCII bell character
-                
                 continue
         
-        # Clear selected dates to try again
-        print("Clearing selected dates to try again...")
         self.selected_dates.clear()
         return False
 
@@ -693,96 +602,37 @@ class RolandGarrosAutomation:
                     # Look for the category grid container
                     try:
                         print("🔍 Looking for category grid container...")
-                        print("🕐 Waiting up to 5 seconds for grid container...")
-                        grid_container = await self.page.wait_for_selector(
-                            'div.w-layout-grid.grid-filter-activ.cat.verti.py-0.mt60',
-                            timeout=5000
+                        # Find both category and polygon in parallel with minimal timeout
+                        [available_category, polygon] = await asyncio.gather(
+                            self.page.wait_for_selector(
+                                'div.category.dropdown-np.w-dropdown-toggle:not(.disabled)',
+                                timeout=1000
+                            ),
+                            self.page.wait_for_selector(
+                                'polygon:not(.disabled)',
+                                timeout=1000
+                            )
                         )
                         
-                        if grid_container:
-                            print("✅ Found category grid container")
-                            
-                            # Find all category dropdowns within the grid
-                            print("🔍 Looking for category dropdowns within grid...")
-                            category_dropdowns = await grid_container.query_selector_all('div.category.dropdown-np.w-dropdown-toggle')
-                            
-                            print(f"📊 Found {len(category_dropdowns)} category options")
-                            
-                            if len(category_dropdowns) == 0:
-                                print("❌ No category dropdowns found in grid")
-                                return False
-                            
-                            # Look for the one WITHOUT "disabled" class
-                            available_found = False
-                            for i, dropdown in enumerate(category_dropdowns):
-                                class_list = await dropdown.get_attribute('class')
-                                print(f"📝 Category {i+1} classes: '{class_list}'")
-                                
-                                if 'disabled' not in class_list:
-                                    print(f"✅ Found available category {i+1} (not disabled)")
-                                    available_found = True
-                                    
-                                    # Get category name for logging
-                                    try:
-                                        print("🔍 Extracting category name...")
-                                        category_name_div = await dropdown.query_selector('h2.cat.category-name div')
-                                        if category_name_div:
-                                            category_name = await category_name_div.text_content()
-                                            print(f"📋 Category name: '{category_name}'")
-                                        else:
-                                            print("⚠️ Could not find category name div")
-                                    except Exception as name_error:
-                                        print(f"⚠️ Error extracting category name: {name_error}")
-                                    
-                                    print(f"🖱️ Clicking available category {i+1}...")
-                                    await dropdown.click()
-                                    print("✅ Category click completed")
-                                    
-                                    # Look for non-disabled polygon right after category click
-                                    print("🔍 Looking for non-disabled polygons...")
-                                    try:
-                                        # Get all polygons
-                                        polygons = await self.page.query_selector_all('polygon')
-                                        print(f"📊 Found {len(polygons)} polygons")
-                                        
-                                        polygon_clicked = False
-                                        for j, polygon in enumerate(polygons):
-                                            # Get class list
-                                            class_list = await polygon.get_attribute('class') or ''
-                                            print(f"📝 Polygon {j+1} classes: '{class_list}'")
-                                            
-                                            if 'disabled' not in class_list.lower():
-                                                print(f"✅ Found non-disabled polygon {j+1}")
-                                                
-                                                # Get polygon details for logging
-                                                points = await polygon.get_attribute('points')
-                                                print(f"📍 Polygon points: {points}")
-                                                
-                                                # Click the polygon
-                                                print("🖱️ Clicking non-disabled polygon...")
-                                                await polygon.click()
-                                                print("✅ Polygon clicked")
-                                                polygon_clicked = True
-                                                break
-                                        
-                                        if not polygon_clicked:
-                                            print("⚠️ No non-disabled polygons found")
-                                            
-                                    except Exception as polygon_error:
-                                        print(f"❌ Error handling polygon selection: {polygon_error}")
-                                    
-                                else:
-                                    print(f"⚠️ Category {i+1} is disabled, skipping...")
-                                    
-                            if not available_found:
-                                print("❌ No available (non-disabled) categories found")
-                                return False
+                        if available_category and polygon:
+                            await available_category.click()
+                            await asyncio.sleep(0.1)  # Minimal wait
+                            await polygon.click()
+                            return True
                         else:
-                            print("❌ Category grid container not found within 5 seconds")
+                            print("❌ No available seats found")
                             return False
-                            
                     except Exception as grid_error:
                         print(f"❌ Error looking for category grid: {grid_error}")
+                        if "Page.wait_for_selector: " in str(grid_error):
+                            print("⚠️ Category grid not found, trying to go back...")
+                            try:
+                                back_button = await self.page.wait_for_selector('button.bt-back.small.w-inline-block', timeout=2000)
+                                if back_button:
+                                    await back_button.click()
+                                    await asyncio.sleep(0.5)
+                            except Exception as back_error:
+                                print(f"❌ Error clicking back button: {back_error}")
                         return False
             else:
                 print("❌ No span element found on the page")
@@ -816,23 +666,27 @@ class RolandGarrosAutomation:
                     print("Item marked as 'off' (unavailable), skipping...")
                     continue
                 
-                # Check if this available item contains BOTH "Single ticket" h4 AND "Outside Courts" text
+                # Check for "Single ticket" in h4 elements
                 h4_elements = await item_div.query_selector_all('h4')
                 has_single_ticket = False
                 has_outside_courts = False
                 
-                # Check for "Single ticket" in h4 elements
-                for h4 in h4_elements:
-                    h4_text = await h4.text_content()
-                    if h4_text and "single ticket" in h4_text.lower():
-                        print(f"✅ Found 'Single ticket' h4 with text: '{h4_text}'")
-                        has_single_ticket = True
-                        break
-                
-                # Check for "Outside Courts" anywhere in the div
+                # Get div text content before checking
                 div_text = await item_div.text_content()
-                if div_text and "unlimited access to the outside courts" in div_text.lower():
-                    print(f"✅ Found 'unlimited access to the outside courts' text in div")
+                
+                # Check if div contains excluded text
+                if "court simonne-mathieu" in div_text.lower():
+                    excluded_court = "Court Simonne-Mathieu"
+                    print(f"❌ Skipping - div contains '{excluded_court}'")
+                    has_outside_courts = False
+                else:
+                    # Check for "Single ticket" in h4 elements
+                    for h4 in h4_elements:
+                        h4_text = await h4.text_content()
+                        if h4_text and "single ticket" in h4_text.lower():
+                            print(f"✅ Found 'Single ticket' h4 with text: '{h4_text}'")
+                            has_single_ticket = True
+                            break
                     
                     # Check if div contains excluded text
                     if "court simonne-mathieu" in div_text.lower():
@@ -896,6 +750,13 @@ class RolandGarrosAutomation:
                             link_href = await link.evaluate('el => el.href')
                             link_text = await link.evaluate('el => el.textContent.trim()')
                             print(f"Found link: '{link_text}' -> {link_href}")
+                            
+                            # If link text is "Unavailable", reload page and continue
+                            if "unavailable" in link_text.lower():
+                                print("⚠️ Found unavailable link, reloading page...")
+                                await self.page.reload(wait_until='domcontentloaded', timeout=30000)
+                                await asyncio.sleep(0.5)
+                                return False
                             
                             # Click the link
                             await link.click()
@@ -965,34 +826,21 @@ class RolandGarrosAutomation:
     async def handle_login(self):
         """Handle automatic login if login form is detected"""
         try:
-            # Check if login form is present
             username_input = await self.page.query_selector('input[name="username"]')
             password_input = await self.page.query_selector('input[name="password"]')
             
             if username_input and password_input:
-                print("🔐 Login form detected - filling credentials...")
-                
-                # Fill username
                 await username_input.fill(self.credentials["username"])
-                print("✅ Username filled")
-                await asyncio.sleep(random.uniform(0.5, 1))
-                
-                # Fill password
+                await asyncio.sleep(0.1)
                 await password_input.fill(self.credentials["password"])
-                print("✅ Password filled")
-                await asyncio.sleep(random.uniform(0.5, 1))
+                await asyncio.sleep(0.1)
                 
-                # Find and click submit button
                 submit_button = await self.page.query_selector('button[type="submit"]')
                 if submit_button:
                     await submit_button.click()
-                    print("✅ Login form submitted")
-                    await asyncio.sleep(random.uniform(2, 4))
+                    await asyncio.sleep(0.5)
                     return True
-                else:
-                    print("❌ Submit button not found")
-                    return False
-            
+                
             return False
             
         except Exception as e:
@@ -1000,154 +848,34 @@ class RolandGarrosAutomation:
             return False
 
     async def run_automation(self, url: str):
-        """Main automation flow - runs indefinitely"""
-        attempt_count = 0
-        
+        """Main automation flow"""
         try:
-            # Initial setup and navigation
-            print(f"\n🔄 Setting up browser and initial navigation...")
-            
-            # Setup browser if needed
             if not self.browser or not self.context or not self.page:
                 if not await self.setup_browser():
-                    print("Browser setup failed, retrying in 10 minutes...")
-                    await asyncio.sleep(600)
+                    await asyncio.sleep(60)
                     return
             
-            # Navigate to the page once
-            print(f"Navigating to: {url}")
-            try:
-                await self.page.goto(url, wait_until='domcontentloaded', timeout=60000)
-                await asyncio.sleep(random.uniform(5, 10))
-            except Exception as nav_error:
-                print(f"Navigation error: {nav_error}")
-                await asyncio.sleep(300)
-                return
+            await self.page.goto(url, wait_until='domcontentloaded', timeout=30000)
+            await asyncio.sleep(0.5)
             
-            # Check for and handle login form
-            print("🔍 Checking for login form...")
-            try:
-                login_form = await self.page.query_selector('form[action*="login"]')
-                if login_form:
-                    print("✅ Login form found")
-                    if await self.handle_login():
-                        print("🎉 Login successful, waiting for page to load...")
-                        await asyncio.sleep(random.uniform(3, 5))
-                else:
-                    print("ℹ️ No login form found")
-            except Exception as login_check_error:
-                print(f"⚠️ Error checking for login form (page may have redirected): {login_check_error}")
-                print("Continuing with automation...")
-                await asyncio.sleep(2)
-            
-            # Check page content once
-            page_content = await self.page.content()
-            page_url = self.page.url
-            
-            # Check for slider/CAPTCHA verification
-            captcha_indicators = [
-                "slider",
-                "captcha",
-                "verification",
-                "prove you are human",
-                "drag the slider",
-                "slide to verify",
-                "security check",
-                "bot detection",
-                "pourquoi cette vérification ? quelque chose dans le comportement du navigateur nous a intrigué"
-            ]
-            
-            is_captcha_page = any(indicator in page_content.lower() for indicator in captcha_indicators)
-            
-            if is_captcha_page:
-                print("🤖 CAPTCHA/Slider verification detected - skipping human behavior simulation")
-                print("Please solve the verification manually...")
-                # Wait for user to solve CAPTCHA
-                await asyncio.sleep(30)
-                
-                # Check for login form after CAPTCHA completion
-                print("🔍 Checking for login form after CAPTCHA...")
-                try:
-                    login_form_after_captcha = await self.page.query_selector('form[action*="login"]')
-                    if login_form_after_captcha:
-                        print("✅ Login form found after CAPTCHA")
-                        if await self.handle_login():
-                            print("🎉 Login successful after CAPTCHA, waiting for page to load...")
-                            await asyncio.sleep(random.uniform(3, 5))
-                    else:
-                        print("ℹ️ No login form found after CAPTCHA")
-                except Exception as captcha_login_error:
-                    print(f"⚠️ Error checking for login form after CAPTCHA: {captcha_login_error}")
-                    print("Continuing with automation...")
-                    await asyncio.sleep(2)
-            else:
-                # Only simulate human behavior if NOT on CAPTCHA page
-                for i in range(random.randint(2, 4)):
-                    print(f"Simulating human behavior {i+1}...")
-                    await self.simulate_human_behavior()
-                    await asyncio.sleep(random.uniform(2, 5))
-            
-            # Check for actual blocking pages
-            blocking_indicators = [
-                "vous avez été bloqué",
-                "you have been blocked", 
-                "access denied",
-                "unusual activity"
-            ]
-            
-            # Check for success indicators
-            success_indicators = [
-                "roland-garros mobile application",
-                "spectators must now present",
-                "tickets via the",
-                "billets",
-                "spectateurs"
-            ]
-            
-            # Check if we're blocked
-            if any(indicator in page_content.lower() for indicator in blocking_indicators):
-                print(f"\n🚫 Blocking detected on page: {page_url}")
-                print("Waiting 30-60 minutes before retrying...")
-                await self.save_storage_state()
-                await asyncio.sleep(random.uniform(1800, 3600))
-                return
-            
-            # Check if we're on a success page
-            if any(indicator in page_content.lower() for indicator in success_indicators):
-                print("✅ SUCCESS! Reached the ticket application page!")
-                await self.save_storage_state()
-            
-            # Now continuously cycle through dates without re-navigating
-            while True:  # Run indefinitely
+            attempt_count = 0  # Initialize counter
+            while True:
                 attempt_count += 1
                 try:
-                    print(f"\n🎫 Ticket search cycle {attempt_count}")
-                    
-                    # Check for blocking before searching
                     if await self.check_for_blocking():
-                        print("💀 Detected blocking - stopping automation")
                         break
                     
-                    # Always try to find tickets (this will cycle through dates)
                     if await self.find_available_date():
-                        print("🎉 Found and clicked on available ticket!")
-                        # Don't break - keep monitoring in case more become available
-                        await asyncio.sleep(10)  # Wait a bit longer after finding a ticket
+                        await asyncio.sleep(0.5)
                     
-                    # Check for blocking after ticket search
                     if await self.check_for_blocking():
-                        print("💀 Detected blocking after ticket search - stopping automation")
                         break
                     
-                    # Short wait before next cycle
-                    wait_time = random.uniform(1, 3)
-                    print(f"⏰ Waiting {wait_time:.1f} seconds before next cycle...")
-                    await asyncio.sleep(wait_time)
+                    await asyncio.sleep(0.2)
                     
                 except Exception as e:
                     print(f"❌ Error in cycle {attempt_count}: {str(e)}")
-                    print("Waiting 30 seconds before retrying...")
-                    await asyncio.sleep(30)
+                    await asyncio.sleep(5)
                     
         except KeyboardInterrupt:
             print("\n🛑 Automation stopped by user")
