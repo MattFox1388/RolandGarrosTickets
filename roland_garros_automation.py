@@ -235,7 +235,7 @@ class RolandGarrosAutomation:
         """Simulate realistic human behavior"""
         try:
             # Much longer initial delay
-            await asyncio.sleep(random.uniform(5, 10))
+            await asyncio.sleep(random.uniform(1, 3))
             
             # Simulate reading behavior - slow scrolling
             for _ in range(random.randint(3, 6)):
@@ -248,7 +248,7 @@ class RolandGarrosAutomation:
                     }});
                 """)
                 # Much longer pauses between scrolls
-                await asyncio.sleep(random.uniform(2, 5))
+                await asyncio.sleep(random.uniform(1, 2))
             
             # Simulate mouse movements - very slow and natural
             for _ in range(random.randint(2, 4)):
@@ -270,7 +270,7 @@ class RolandGarrosAutomation:
             
             # Random longer pause to simulate thinking
             if random.random() < 0.4:
-                await asyncio.sleep(random.uniform(3, 8))
+                await asyncio.sleep(random.uniform(1, 2))
             
         except Exception as e:
             print(f"Human behavior simulation error (non-critical): {e}")
@@ -310,7 +310,7 @@ class RolandGarrosAutomation:
                         await self.page.mouse.click(x, y)
                         
                         print(f"Clicked on date: {date_text}")
-                        await asyncio.sleep(random.uniform(1, 2))
+                        await asyncio.sleep(random.uniform(0, 1))
                         
                         # Check for tickets after clicking
                         if await self.check_collection_list():
@@ -454,29 +454,42 @@ class RolandGarrosAutomation:
     async def handle_ticket_purchase(self):
         """Handle ticket quantity selection and add to cart"""
         try:
+            print("🎫 Starting handle_ticket_purchase method...")
+            
             # Check for blocking first
+            print("🔍 Checking for blocking before starting...")
             if await self.check_for_blocking():
+                print("❌ Blocking detected at start of handle_ticket_purchase")
                 return False
+            print("✅ No blocking detected, proceeding...")
                 
             # Check if we're on a ticket page with "Outside Courts"
+            print("🔍 Looking for span elements on the page...")
             outside_courts_span = await self.page.query_selector('span')
             if outside_courts_span:
+                print("✅ Found a span element, checking its content...")
                 span_text = await outside_courts_span.text_content()
+                print(f"📝 Span text content: '{span_text}'")
+                
                 if span_text and "outside courts" in span_text.lower():
-                    print("🎫 Found 'Outside Courts' span - handling ticket purchase...")
+                    print("🎫 Found 'Outside Courts' span - handling Outside Courts ticket purchase...")
                     
                     # First, find and click "Full price" option
                     print("🔍 Looking for 'Full price' h2 element...")
                     h2_elements = await self.page.query_selector_all('h2')
+                    print(f"📊 Found {len(h2_elements)} h2 elements on page")
+                    
                     full_price_clicked = False
                     
-                    for h2 in h2_elements:
+                    for i, h2 in enumerate(h2_elements):
                         h2_text = await h2.text_content()
+                        print(f"📝 H2 element {i+1}: '{h2_text}'")
                         if h2_text and "full price" in h2_text.lower():
                             print(f"✅ Found 'Full price' h2: '{h2_text}'")
                             
                             # Get parent div and click it
                             # Find div with class containing "bt-main offre hori active-category"
+                            print("🔍 Looking for full price div with active-category class...")
                             full_price_div = await self.page.query_selector('div[class*="bt-main offre hori active-category"]')
                             if full_price_div:
                                 print("🖱️ Clicking 'Full price' div...")
@@ -486,8 +499,11 @@ class RolandGarrosAutomation:
                                 full_price_clicked = True
                                 
                                 # Check for blocking after clicking full price
+                                print("🔍 Checking for blocking after clicking full price...")
                                 if await self.check_for_blocking():
+                                    print("❌ Blocking detected after clicking full price")
                                     return False
+                                print("✅ No blocking after full price click")
                                 break
                             else:
                                 print("❌ Could not find parent div of 'Full price' h2")
@@ -496,52 +512,186 @@ class RolandGarrosAutomation:
                         print("⚠️ 'Full price' option not found, continuing anyway...")
                     
                     # Find and click increment button twice
+                    print("🔍 Looking for increment button...")
                     increment_button = await self.page.query_selector('button.increment.less.button.w-button')
                     if increment_button:
-                        print("🔢 Found increment button - clicking twice...")
+                        print("✅ Found increment button")
+                        print("🔢 Clicking increment button first time...")
                         await increment_button.click()
                         await asyncio.sleep(random.uniform(0.5, 1))
+                        print("✅ First increment click completed")
                         
                         # Check for blocking after first click
+                        print("🔍 Checking for blocking after first increment...")
                         if await self.check_for_blocking():
+                            print("❌ Blocking detected after first increment")
                             return False
+                        print("✅ No blocking after first increment")
                             
+                        print("🔢 Clicking increment button second time...")
                         await increment_button.click()
                         await asyncio.sleep(random.uniform(0.5, 1))
-                        print("✅ Clicked increment button twice")
+                        print("✅ Second increment click completed")
                         
                         # Check for blocking after second click
+                        print("🔍 Checking for blocking after second increment...")
                         if await self.check_for_blocking():
+                            print("❌ Blocking detected after second increment")
                             return False
+                        print("✅ No blocking after second increment")
                     else:
                         print("❌ Increment button not found")
                         return False
                     
                     # Find and click add to cart button
+                    print("🔍 Looking for add-to-cart button...")
                     add_to_cart_button = await self.page.query_selector('button[class*="add-to-cart"]')
                     if add_to_cart_button:
-                        print("🛒 Found add-to-cart button - clicking...")
+                        print("✅ Found add-to-cart button")
+                        print("🛒 Clicking add-to-cart button...")
                         await add_to_cart_button.click()
                         await asyncio.sleep(random.uniform(1, 2))
-                        print("✅ Clicked add-to-cart button")
+                        print("✅ Add-to-cart click completed")
                         
                         # Check for blocking after add to cart
+                        print("🔍 Checking for blocking after add-to-cart...")
                         if await self.check_for_blocking():
+                            print("❌ Blocking detected after add-to-cart")
                             return False
+                        print("✅ No blocking after add-to-cart")
                             
+                        print("🎉 Outside Courts ticket purchase completed successfully!")
                         return True
                     else:
                         print("❌ Add-to-cart button not found")
                         return False
                 else:
-                    print("ℹ️ Span found but doesn't contain 'Outside Courts'")
-                    return False
+                    print("ℹ️ Span found but doesn't contain 'Outside Courts' - looking for category grid...")
+                    
+                    # Look for the category grid container
+                    try:
+                        print("🔍 Looking for category grid container...")
+                        print("🕐 Waiting up to 5 seconds for grid container...")
+                        grid_container = await self.page.wait_for_selector(
+                            'div.w-layout-grid.grid-filter-activ.cat.verti.py-0.mt60',
+                            timeout=5000
+                        )
+                        
+                        if grid_container:
+                            print("✅ Found category grid container")
+                            
+                            # Find all category dropdowns within the grid
+                            print("🔍 Looking for category dropdowns within grid...")
+                            category_dropdowns = await grid_container.query_selector_all('div.category.dropdown-np.w-dropdown-toggle')
+                            
+                            print(f"📊 Found {len(category_dropdowns)} category options")
+                            
+                            if len(category_dropdowns) == 0:
+                                print("❌ No category dropdowns found in grid")
+                                return False
+                            
+                            # Look for the one WITHOUT "disabled" class
+                            available_found = False
+                            for i, dropdown in enumerate(category_dropdowns):
+                                class_list = await dropdown.get_attribute('class')
+                                print(f"📝 Category {i+1} classes: '{class_list}'")
+                                
+                                if 'disabled' not in class_list:
+                                    print(f"✅ Found available category {i+1} (not disabled)")
+                                    available_found = True
+                                    
+                                    # Get category name for logging
+                                    try:
+                                        print("🔍 Extracting category name...")
+                                        category_name_div = await dropdown.query_selector('h2.cat.category-name div')
+                                        if category_name_div:
+                                            category_name = await category_name_div.text_content()
+                                            print(f"📋 Category name: '{category_name}'")
+                                        else:
+                                            print("⚠️ Could not find category name div")
+                                    except Exception as name_error:
+                                        print(f"⚠️ Error extracting category name: {name_error}")
+                                    
+                                    print(f"🖱️ Clicking available category {i+1}...")
+                                    await dropdown.click()
+                                    print("✅ Category click completed")
+                                    
+                                    # Check for blocking after clicking category
+                                    print("🔍 Checking for blocking after category selection...")
+                                    if await self.check_for_blocking():
+                                        print("❌ Blocking detected after category selection")
+                                        return False
+                                    print("✅ No blocking after category selection")
+                                    
+                                    # After selecting category, look for increment button and add to cart
+                                    print("🔍 Looking for increment button after category selection...")
+                                    increment_button = await self.page.query_selector('button.increment.less.button.w-button')
+                                    if increment_button:
+                                        print("✅ Found increment button after category selection")
+                                        print("🔢 Clicking increment button first time...")
+                                        await increment_button.click()
+                                        print("✅ First increment click completed")
+                                        
+                                        print("🔍 Checking for blocking after first increment...")
+                                        if await self.check_for_blocking():
+                                            print("❌ Blocking detected after first increment")
+                                            return False
+                                        print("✅ No blocking after first increment")
+                                            
+                                        print("🔢 Clicking increment button second time...")
+                                        await increment_button.click()
+                                        print("✅ Second increment click completed")
+                                        
+                                        print("🔍 Checking for blocking after second increment...")
+                                        if await self.check_for_blocking():
+                                            print("❌ Blocking detected after second increment")
+                                            return False
+                                        print("✅ No blocking after second increment")
+                                    else:
+                                        print("⚠️ Increment button not found after category selection, continuing...")
+                                    
+                                    # Find and click add to cart button
+                                    print("🔍 Looking for add-to-cart button after category selection...")
+                                    add_to_cart_button = await self.page.query_selector('button[class*="add-to-cart"]')
+                                    if add_to_cart_button:
+                                        print("✅ Found add-to-cart button")
+                                        print("🛒 Clicking add-to-cart button...")
+                                        await add_to_cart_button.click()
+                                        print("✅ Add-to-cart click completed")
+                                        
+                                        print("🔍 Checking for blocking after add-to-cart...")
+                                        if await self.check_for_blocking():
+                                            print("❌ Blocking detected after add-to-cart")
+                                            return False
+                                        print("✅ No blocking after add-to-cart")
+                                            
+                                        print("🎉 Category ticket purchase completed successfully!")
+                                        return True
+                                    else:
+                                        print("❌ Add-to-cart button not found after category selection")
+                                        return False
+                                else:
+                                    print(f"⚠️ Category {i+1} is disabled, skipping...")
+                                    
+                            if not available_found:
+                                print("❌ No available (non-disabled) categories found")
+                                return False
+                        else:
+                            print("❌ Category grid container not found within 5 seconds")
+                            return False
+                            
+                    except Exception as grid_error:
+                        print(f"❌ Error looking for category grid: {grid_error}")
+                        return False
             else:
-                print("ℹ️ No span element found")
+                print("❌ No span element found on the page")
                 return False
                 
         except Exception as e:
-            print(f"❌ Error handling ticket purchase: {e}")
+            print(f"❌ Unexpected error in handle_ticket_purchase: {e}")
+            print(f"📍 Error type: {type(e).__name__}")
+            import traceback
+            print(f"📍 Traceback: {traceback.format_exc()}")
             return False
 
     async def check_collection_list(self):
