@@ -249,19 +249,19 @@ class RolandGarrosAutomation:
             await asyncio.sleep(0.2)
             
             # Single quick scroll
-                scroll_y = random.randint(50, 150)
-                await self.page.evaluate(f"""
-                    window.scrollBy({{
-                        top: {scroll_y},
-                        left: 0,
-                        behavior: 'smooth'
-                    }});
-                """)
+            scroll_y = random.randint(50, 150)
+            await self.page.evaluate(f"""
+                window.scrollBy({{
+                    top: {scroll_y},
+                    left: 0,
+                    behavior: 'smooth'
+                }});
+            """)
             await asyncio.sleep(0.1)
             
             # Single quick mouse movement
-                x = random.randint(100, 800)
-                y = random.randint(100, 600)
+            x = random.randint(100, 800)
+            y = random.randint(100, 600)
             await self.page.mouse.move(x, y, steps=5)
             
         except Exception as e:
@@ -284,8 +284,8 @@ class RolandGarrosAutomation:
             print("🚨 Ticket already found - not switching dates!")
             await asyncio.sleep(2)
             return True
-                return False
-            
+        return False
+
     async def _try_select_date(self, date_text):
         """Try to select a specific date and process tickets"""
         try:
@@ -297,8 +297,8 @@ class RolandGarrosAutomation:
                 return True
             
             # Reduce timeout and use faster selector
-                date_element = await self.page.wait_for_selector(
-                    f"text={date_text}",
+            date_element = await self.page.wait_for_selector(
+                f"text={date_text}",
                 timeout=1000  # Reduced from 2000
             )
             
@@ -306,14 +306,13 @@ class RolandGarrosAutomation:
                 return False
                 
             print(f"✅ Found date element for {date_text}")
-            # Remove hover and sleep - not necessary
             
             # Click the date with random offset
-                    box = await date_element.bounding_box()
-                    if box:
-                        x = box['x'] + random.randint(5, max(6, int(box['width'] - 5)))
-                        y = box['y'] + random.randint(5, max(6, int(box['height'] - 5)))
-                        await self.page.mouse.click(x, y)
+            box = await date_element.bounding_box()
+            if box:
+                x = box['x'] + random.randint(5, max(6, int(box['width'] - 5)))
+                y = box['y'] + random.randint(5, max(6, int(box['height'] - 5)))
+                await self.page.mouse.click(x, y)
                 print(f"✅ Successfully clicked on {date_text}")
                 await asyncio.sleep(0.1)  # Reduced from 0.3
                 return True
@@ -346,9 +345,9 @@ class RolandGarrosAutomation:
             
         if ticket_result:
             print(f"✅ Successfully processed tickets for {date_text}")
-                            self.selected_dates.add(date_text)
+            self.selected_dates.add(date_text)
             self.processing_ticket = False
-                            return True
+            return True
             
         # Final check for found ticket
         if self.ticket_found:
@@ -379,7 +378,7 @@ class RolandGarrosAutomation:
             except Exception as login_error:
                 if "Timeout" in str(login_error):
                     await self._try_back_button()
-                        else:
+                else:
                     print(f"❌ Error handling login: {login_error}")
         return False
 
@@ -431,8 +430,8 @@ class RolandGarrosAutomation:
                 continue
         
             # Reset for next cycle
-        self.selected_dates.clear()
-        return False
+            self.selected_dates.clear()
+            return False
             
         except Exception as e:
             print(f"Error finding date: {e}")
@@ -462,8 +461,8 @@ class RolandGarrosAutomation:
     async def handle_outside_courts_purchase(self):
         """Handle purchase flow specifically for Outside Courts tickets"""
         try:
-                    # First, find and click "Full price" option
-                    print("🔍 Looking for 'Full price' h2 element...")
+            # First, find and click "Full price" option
+            print("🔍 Looking for 'Full price' h2 element...")
             if not await self._select_full_price_option():
                 print("⚠️ 'Full price' option not found, continuing anyway...")
 
@@ -476,57 +475,57 @@ class RolandGarrosAutomation:
 
     async def _select_full_price_option(self):
         """Select the 'Full price' ticket option if available"""
-                    h2_elements = await self.page.query_selector_all('h2')
+        h2_elements = await self.page.query_selector_all('h2')
         print(f"📊 Found {len(h2_elements)} h2 elements on page")
-                    
-                    for h2 in h2_elements:
-                        h2_text = await h2.text_content()
-                        if h2_text and "full price" in h2_text.lower():
-                            print(f"✅ Found 'Full price' h2: '{h2_text}'")
-                            full_price_div = await self.page.query_selector('div[class*="bt-main offre hori active-category"]')
-                            if full_price_div:
-                                await full_price_div.click()
-                                await asyncio.sleep(random.uniform(0.3, 0.5))
-                                print("✅ Clicked 'Full price' option")
+        
+        for h2 in h2_elements:
+            h2_text = await h2.text_content()
+            if h2_text and "full price" in h2_text.lower():
+                print(f"✅ Found 'Full price' h2: '{h2_text}'")
+                full_price_div = await self.page.query_selector('div[class*="bt-main offre hori active-category"]')
+                if full_price_div:
+                    await full_price_div.click()
+                    await asyncio.sleep(random.uniform(0.3, 0.5))
+                    print("✅ Clicked 'Full price' option")
                     return True
-                                    return False
+        return False
 
     async def _handle_quantity_and_cart(self):
         """Handle ticket quantity selection and add to cart"""
         try:
             # Find and click increment button
             increment_button = await self.page.wait_for_selector('button.increment.less.button.w-button', timeout=1000)
-                    if increment_button:
+            if increment_button:
                 print("✅ Found increment button")
-                        await increment_button.click()
+                await increment_button.click()
                 await asyncio.sleep(0.3)  # Reduced from 0.5-1.0
                 print("✅ Increment click completed")
                 
-                        if await self.check_for_blocking():
-                            return False
-                    else:
-                        print("❌ Increment button not found")
-                        return False
-                    
+                if await self.check_for_blocking():
+                    return False
+            else:
+                print("❌ Increment button not found")
+                return False
+            
             # Add to cart
             add_to_cart_button = await self.page.wait_for_selector('button[class*="add-to-cart"]', timeout=1000)
-                    if add_to_cart_button:
+            if add_to_cart_button:
                 print("🛒 Clicking add-to-cart button...")
-                        await add_to_cart_button.click()
+                await add_to_cart_button.click()
                 await asyncio.sleep(0.5)  # Reduced from 1-2
-                        
-                        if await self.check_for_blocking():
-                            return False
-                            
+                
+                if await self.check_for_blocking():
+                    return False
+                    
                 print("🎉 Ticket added to cart successfully!")
-                        return True
-                    else:
-                        print("❌ Add-to-cart button not found")
-                        return False
+                return True
+            else:
+                print("❌ Add-to-cart button not found")
+                return False
                 
         except Exception as e:
             print(f"❌ Error in handle_quantity_and_cart: {e}")
-                    return False
+            return False
 
     async def _handle_category_grid_purchase(self):
         """Handle purchase flow for category grid tickets"""
@@ -548,7 +547,7 @@ class RolandGarrosAutomation:
                 await asyncio.sleep(0.1)
                 await polygon.click()
                 return True
-                return False
+            return False
                 
         except Exception as e:
             print(f"❌ Error in handle_category_grid_purchase: {e}")
@@ -602,7 +601,7 @@ class RolandGarrosAutomation:
         try:
             # Check if item is available (not "off")
             class_list = await item_div.evaluate('el => el.className')
-                if "off" in class_list.lower():
+            if "off" in class_list.lower():
                 return False
                 
             # Get div text content
@@ -617,16 +616,17 @@ class RolandGarrosAutomation:
             if "night session" in div_text.lower():
                 print("❌ Skipping - div contains 'Night Session'") 
                 return False
-                # Check for "Single ticket" in h4 elements
+                
+            # Check for "Single ticket" in h4 elements
             h4_elements = await item_div.query_selector_all('h4')
             has_single_ticket = False
-                for h4 in h4_elements:
-                    h4_text = await h4.text_content()
-                    if h4_text and "single ticket" in h4_text.lower():
-                        print(f"✅ Found 'Single ticket' h4 with text: '{h4_text}'")
-                        has_single_ticket = True
-                        break
-                
+            for h4 in h4_elements:
+                h4_text = await h4.text_content()
+                if h4_text and "single ticket" in h4_text.lower():
+                    print(f"✅ Found 'Single ticket' h4 with text: '{h4_text}'")
+                    has_single_ticket = True
+                    break
+            
             return has_single_ticket and True  # True for outside courts since we filtered Simonne-Mathieu
             
         except Exception as e:
@@ -635,32 +635,32 @@ class RolandGarrosAutomation:
 
     async def _find_ticket_link(self, item_div):
         """Find and return the first ticket link in a collection item"""
-                    try:
-                        print("Searching for <a> link within the collection item...")
-                        link = await item_div.evaluate_handle('''
-                            (element) => {
-                                function findFirstLink(node) {
-                                    if (node.tagName === 'A') {
-                                        return node;
-                                    }
-                                    for (let child of node.children) {
-                                        const link = findFirstLink(child);
-                                        if (link) return link;
-                                    }
-                                    return null;
-                                }
-                                return findFirstLink(element);
-                            }
-                        ''')
-                        
+        try:
+            print("Searching for <a> link within the collection item...")
+            link = await item_div.evaluate_handle('''
+                (element) => {
+                    function findFirstLink(node) {
+                        if (node.tagName === 'A') {
+                            return node;
+                        }
+                        for (let child of node.children) {
+                            const link = findFirstLink(child);
+                            if (link) return link;
+                        }
+                        return null;
+                    }
+                    return findFirstLink(element);
+                }
+            ''')
+            
             if not link:
                 return None
                 
-                            # Get link details for logging
-                            link_href = await link.evaluate('el => el.href')
-                            link_text = await link.evaluate('el => el.textContent.trim()')
-                            print(f"Found link: '{link_text}' -> {link_href}")
-                            
+            # Get link details for logging
+            link_href = await link.evaluate('el => el.href')
+            link_text = await link.evaluate('el => el.textContent.trim()')
+            print(f"Found link: '{link_text}' -> {link_href}")
+            
             # Check price limit
             if "€" in link_text:
                 try:
@@ -693,7 +693,6 @@ class RolandGarrosAutomation:
             
             print("🖱️ Clicking ticket link (no href, must click)...")
             await link.scroll_into_view_if_needed()
-            # Remove sleep before click
             await link.click()
             print("✅ Successfully clicked ticket link!")
             
@@ -704,8 +703,8 @@ class RolandGarrosAutomation:
                 return True  # Still return True to prevent date switching
             
             # Handle the purchase
-                            if await self.handle_ticket_purchase():
-                                print("🎉 Successfully handled ticket purchase!")
+            if await self.handle_ticket_purchase():
+                print("🎉 Successfully handled ticket purchase!")
                 self.processing_ticket = False
                 self.ticket_found = False  # Clear flag to resume automation
                 return True
@@ -717,8 +716,8 @@ class RolandGarrosAutomation:
         except Exception as e:
             print(f"❌ Error handling ticket link: {e}")
             print("🚨 KEEPING BOTH FLAGS SET TO PREVENT DATE SWITCHING!")
-                            return True
-                            
+            return True
+
     async def _verify_ticket_page(self):
         """Verify we're on the ticket selection page"""
         try:
@@ -822,7 +821,7 @@ class RolandGarrosAutomation:
                         
                         # Keep waiting until both flags are cleared (with timeout)
                         wait_count = 0
-                        max_wait_attempts = 2  # Changed from 4 to 2
+                        max_wait_attempts = 2
                         
                         while (self.ticket_found or self.processing_ticket) and wait_count < max_wait_attempts:
                             wait_count += 1
@@ -834,31 +833,37 @@ class RolandGarrosAutomation:
                             print("🔄 Resetting flags and resuming date switching...")
                             self.ticket_found = False
                             self.processing_ticket = False
-                    else:
-                            print("✅ Ticket processing completed, resuming automation")
-                        
-                        continue  # Skip all other processing and restart loop
+                            await asyncio.sleep(1)  # Brief pause before continuing
+                            continue
+                            
+                        print("✅ Ticket processing completed, resuming automation")
+                        await asyncio.sleep(1)  # Brief pause before continuing
                     
+                    # Check for blocking
                     if await self.check_for_blocking():
+                        print("🚫 Blocking detected - stopping automation")
                         break
                     
                     # Find and process available dates
                     date_result = await self.find_available_date()
                     if date_result:
                         print("🎉 Ticket processing completed successfully!")
-                        # Add a longer pause after successful ticket processing
                         await asyncio.sleep(5)
                     else:
-                        # Short pause between date checking cycles
                         await asyncio.sleep(0.2)
                     
+                    # Double check blocking after date processing
                     if await self.check_for_blocking():
+                        print("🚫 Blocking detected after date processing - stopping automation")
                         break
                     
                 except Exception as e:
                     print(f"❌ Error in cycle {attempt_count}: {str(e)}")
                     await asyncio.sleep(5)
-                    
+                    if attempt_count >= 3:  # Add max attempts
+                        print("⚠️ Max attempts reached - stopping automation")
+                        break
+            
         except KeyboardInterrupt:
             print("\n🛑 Automation stopped by user")
         finally:
